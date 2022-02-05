@@ -1,0 +1,19 @@
+"use strict";
+class Player {
+    constructor() {
+        return Vue.reactive(this);
+    }
+}
+class Ranker {
+    constructor() {
+        return Vue.reactive(this);
+    }
+}
+class FairLadder {
+    socket;
+    state = Vue.reactive({
+        connected: false,
+        rankers: {},
+    });
+}
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoibGFkZGVyLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vLi4vc3JjL2xhZGRlci50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiO0FBR0EsTUFBTSxNQUFNO0lBQ1g7UUFDQyxPQUFPLEdBQUcsQ0FBQyxRQUFRLENBQUMsSUFBSSxDQUFDLENBQUM7SUFDM0IsQ0FBQztDQUNEO0FBRUQsTUFBTSxNQUFNO0lBRVg7UUFDQyxPQUFPLEdBQUcsQ0FBQyxRQUFRLENBQUMsSUFBSSxDQUFDLENBQUM7SUFDM0IsQ0FBQztDQUNEO0FBRUQsTUFBTSxVQUFVO0lBQ2YsTUFBTSxDQUFjO0lBQ3BCLEtBQUssR0FBRyxHQUFHLENBQUMsUUFBUSxDQUFDO1FBQ3BCLFNBQVMsRUFBRSxLQUFLO1FBQ2hCLE9BQU8sRUFBRSxFQUE0QjtLQUNyQyxDQUFDLENBQUM7Q0FDSCIsInNvdXJjZXNDb250ZW50IjpbIlxyXG5cclxuXHJcbmNsYXNzIFBsYXllciB7XHJcblx0Y29uc3RydWN0b3IoKSB7XHJcblx0XHRyZXR1cm4gVnVlLnJlYWN0aXZlKHRoaXMpO1xyXG5cdH1cclxufVxyXG5cclxuY2xhc3MgUmFua2VyIHtcclxuXHJcblx0Y29uc3RydWN0b3IoKSB7XHJcblx0XHRyZXR1cm4gVnVlLnJlYWN0aXZlKHRoaXMpO1xyXG5cdH1cclxufVxyXG5cclxuY2xhc3MgRmFpckxhZGRlciB7XHJcblx0c29ja2V0PzogRmFpclNvY2tldDtcclxuXHRzdGF0ZSA9IFZ1ZS5yZWFjdGl2ZSh7XHJcblx0XHRjb25uZWN0ZWQ6IGZhbHNlLFxyXG5cdFx0cmFua2Vyczoge30gYXMgUmVjb3JkPG51bWJlciwgUmFua2VyPixcclxuXHR9KTtcclxufSJdfQ==

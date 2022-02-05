@@ -1,0 +1,52 @@
+chat {
+	max-height: 100vh;
+	display: flex;
+	flex-direction: column;
+}
+
+.fair-chat .ant-comment-inner,
+.fair-chat-new .ant-comment-inner {
+	padding: 0;
+}
+
+.fair-chat li.ant-list-item {
+	padding-top: 0 !important;
+	padding-bottom: 0 !important;
+}
+
+.fair-chat .ant-comment-content-author {
+	margin-bottom: 0;
+}
+
+
+
+
+.fair-chat {
+	min-height: 0;
+	flex: 1 1 auto;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+}
+
+.fair-chat .ant-spin-nested-loading {
+	min-height: 0;
+	flex: 1 1 auto;
+	overflow-y: auto;
+}
+
+.fair-chat h2 {
+	margin: 0;
+}
+
+.fair-chat-new .ant-comment-content-detail {
+	display: flex;
+}
+
+.fair-chat .ant-comment-avatar b,
+.fair-chat-new .ant-comment-avatar b {
+	font-size: large;
+	width: 1ch;
+	display: inline-flex;
+	justify-content: center;
+}
