@@ -192,9 +192,12 @@ class FairChatVue extends VueWithProps({
 	}
 	async sendMessage() {
 		this.chat.data.loading = true;
-		await new Promise(r => setTimeout(r, 1000));
-		let last = this.chat.data.messages[0];
+		await new Promise(r => setTimeout(r, 400));
 		this.chat.sendMessage(this.newMessage);
+		while (this.chat.data.loading) {
+			await new Promise(r => setTimeout(r, 100));
+		}
+		this.newMessage = '';
 	}
 	changeUsername() {
 		this.newUsername = this.chat.userData.username;
