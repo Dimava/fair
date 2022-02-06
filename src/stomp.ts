@@ -1,8 +1,8 @@
 
 type DecimalString = string & { _?: 'DecimalString' };
 
-type _ConstructEvent<EvType extends string, Data extends {}> = 
-	| {eventType: EvType} & Data;
+type _ConstructEvent<EvType extends string, Data extends {}> =
+	| { eventType: EvType } & Data;
 interface SocketLadderEventMap {
 	BIAS: {
 		eventType: 'BIAS',
@@ -48,7 +48,7 @@ interface SocketLadderEventMap {
 		eventType: 'RESET',
 	};
 }
-type SocketLadderEvent = SocketLadderEventMap[keyof SocketLadderEventMap]; 
+type SocketLadderEvent = SocketLadderEventMap[keyof SocketLadderEventMap];
 interface SocketChatMessage {
 	username: string;
 	accountId: accountId;
@@ -141,6 +141,9 @@ class FairSocket {
 	});
 	constructor() {
 		this.stompClient = StompJs.Stomp.over(() => new SockJS('https://fair.kaliburg.de/fairsocket'));
+		if (!localStorage.getItem('stompClient.debug')) {
+			this.stompClient.debug = () => { };
+		}
 		for (let k of [
 			'onChangeState',
 			'onConnect',
@@ -154,7 +157,8 @@ class FairSocket {
 		] as const) {
 			// just logging everything
 			this.stompClient[k] = (...a) => {
-				console.warn(k, ...a);
+				if (localStorage.getItem('stompClient.logEvents'))
+					console.warn(k, ...a);
 				(this as any)[k]?.(...a);
 			}
 		}

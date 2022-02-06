@@ -195,6 +195,7 @@ class FairLadder {
 				ranker.rank = this.state.rankers.length + 1;
 				if (!this.state.rankers.find(e => e.accountId == event.accountId)) {
 					this.state.rankers.push(ranker);
+					this.state.rankersById[ranker.accountId] = ranker;
 				}
 				break;
 			}
@@ -252,6 +253,9 @@ class FairLadder {
 
 				this.state.connectionRequested = false;
 				this.state.connected = true;
+
+				this.userData.accountId = this.state.yourRanker.accountId;
+				this.userData.username = this.state.yourRanker.username;
 			}
 		}
 	}
@@ -403,8 +407,7 @@ class FairLadderVue extends VueWithProps({
 			let rankers = [state.firstRanker, ...state.rankers.slice(middleRank - this.nearRankers, middleRank + this.nearRankers)];
 			return rankers;
 		}
-		// return [];
-		return this.ladder.state.rankers//.slice(0, 10);
+		return this.ladder.state.rankers;
 	}
 	get pagination() {
 		return {

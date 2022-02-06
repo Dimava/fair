@@ -170,7 +170,7 @@ class FairChatVue extends VueWithProps({
 						title="What shall be your new name?"
 						@ok="confirmNameChange"
 						>
-					<a-input id="new-username-modal-input" v-model:value="newUsername" @pressEnter="confirmNameChange" :maxlength="32" />
+					<a-input ref="elNewUsernameInput" v-model:value="newUsername" @pressEnter="confirmNameChange" :maxlength="32" />
 				</a-modal>
 			</CHAT>
 		`;
@@ -198,7 +198,7 @@ class FairChatVue extends VueWithProps({
 		this.newUsername = this.chat.userData.username;
 		this.newUsernameModalOpen = true;
 		setTimeout(() => {
-			let input: HTMLInputElement = document.querySelector('input#new-username-modal-input')!;
+			let input = this.$refs.elNewUsernameInput as HTMLInputElement;
 			input?.focus();
 		});
 	}
