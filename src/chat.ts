@@ -43,6 +43,8 @@ class FairChat {
 
 	handleChatUpdates(message: FairSocketSubscribeResponseMap['/topic/chat/$ladderNum']) {
 		if (!message) return;
+		message.username = unescapeHtml(message.username);
+		message.message = unescapeHtml(message.message);
 		this.state.messages.unshift(message);
 		this.state.loading = false;
 		// if (chatData.messages.length > 30) chatData.messages.pop();

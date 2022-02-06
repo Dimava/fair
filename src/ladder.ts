@@ -26,7 +26,7 @@ class Ranker {
 	static from(source: SocketRanker): Ranker;
 	static from(source: SocketRanker | SocketYouRanker): Ranker | YouRanker {
 		let ranker = source.you ? new YouRanker() : new Ranker();
-		ranker.username = source.username;
+		ranker.username = unescapeHtml(source.username);
 		ranker.you = source.you;
 		ranker.accountId = source.accountId;
 		ranker.bias = source.bias;
@@ -66,7 +66,7 @@ class FairLadder {
 	state = VueReactive({
 		connected: false,
 		connectionRequested: false,
-		rankersById: {} as Record<number, Ranker>,
+		rankersById: {} as Record<accountId, Ranker>,
 		ladderNum: 1,
 
 		vinegared: {
@@ -87,7 +87,7 @@ class FairLadder {
 			pointsForPromote: 250000000,
 			minimumPeopleForPromote: 10,
 			assholeLadder: 15,
-			assholeTags: [''],
+			assholeTags: ["", "♠", "♣", "♥", "♦"],
 			baseVinegarNeededToThrow: 1000000,
 			baseGrapesNeededToAutoPromote: 2000,
 			manualPromoteWaitTime: 15,
@@ -95,6 +95,8 @@ class FairLadder {
 		},
 
 		pointsNeededForManualPromote: 0,
+
+		currentTime: 0,
 	});
 	ladderSubscription: any;
 	connect() {
@@ -201,7 +203,7 @@ class FairLadder {
 			case 'JOIN': {
 				let ranker = new Ranker();
 				ranker.accountId = event.accountId;
-				ranker.username = event.data.username;
+				ranker.username = unescapeHtml(event.data.username);
 				ranker.rank = this.state.rankers.length + 1;
 				if (!this.state.rankers.find(e => e.accountId == event.accountId)) {
 					this.state.rankers.push(ranker);
@@ -211,7 +213,7 @@ class FairLadder {
 			}
 			case 'NAME_CHANGE': {
 				let ranker = this.state.rankersById[event.accountId];
-				ranker.username = event.data;
+				ranker.username = unescapeHtml(event.data);
 				break;
 			}
 			case 'RESET': {
@@ -220,14 +222,6 @@ class FairLadder {
 				break;
 			}
 		}
-	}
-
-
-	getAutoPromoteGrapeCost(rank: number) {
-		let infoData = this.state.infoData;
-		let minPeople = Math.max(infoData.minimumPeopleForPromote, this.state.currentLadder.number);
-		let divisor = Math.max(rank - minPeople + 1, 1);
-		return Math.floor(infoData.baseGrapesNeededToAutoPromote / divisor);
 	}
 
 	handleInfo(message: FairSocketSubscribeResponseMap['/user/queue/info']) {
@@ -271,6 +265,7 @@ class FairLadder {
 	}
 
 	calculateLadder(secondsPassed: number) {
+		this.state.currentTime += secondsPassed;
 		// FIXME this uses 400ms per 8k rankers
 		this.state.rankers.sort((a, b) => b.points - a.points);
 
@@ -297,9 +292,9 @@ class FairLadder {
 			// Calculating Vinegar based on Grapes count
 			if (rank == 1) {
 				if (this.state.currentLadder.number === 1)
-					ranker.vinegar *= ~~(0.9975 ** secondsPassed);
+					ranker.vinegar = Math.floor(ranker.vinegar * (0.9975 ** secondsPassed));
 			} else {
-				ranker.vinegar += ~~(ranker.grapes * secondsPassed)
+				ranker.vinegar += Math.floor(ranker.grapes * secondsPassed)
 			}
 		});
 
@@ -371,6 +366,96 @@ class FairLadder {
 	}
 
 
+	request(type: 'asshole' | 'auto-promote' | 'bias' | 'multi' | 'promote' | 'vinegar') {
+		if (!this.socket) throw 0;
+		if (!this.canRequest(type, this.state.yourRanker.accountId)) {
+			console.log(`fakeRequest: %O can't do %O!`, this.state.yourRanker, type);
+		}
+		this.socket.send(`/app/ladder/post/${type}`, { uuid: this.userData.uuid });
+	}
+
+	fakeUpdate(secondsPassed: number = 1) {
+		this.calculateLadder(secondsPassed);
+	}
+	fakeRequest(eventType: SocketLadderEvent['eventType'], accountId: accountId) {
+		if (!this.canRequest(eventType.toLowerCase().replace(/_/g, '-') as any, accountId)) {
+			console.log(`fakeRequest: %O can't do %O!`, this.state.rankersById[accountId], eventType);
+		}
+		switch (eventType) {
+			case 'BIAS':
+			case 'MULTI':
+			case 'SOFT_RESET_POINTS':
+			case 'PROMOTE':
+			case 'AUTO_PROMOTE':
+				this.handleEvent({ eventType, accountId }); break;
+			case 'VINEGAR': {
+				let target = this.state.rankers[0];
+				let source = this.state.rankersById[accountId];
+				this.handleEvent({
+					eventType, accountId, data: {
+						amount: source.vinegar + '',
+						success: source.vinegar > target.vinegar,
+					}
+				}); break;
+			}
+			default:
+				eventType;
+				console.error('not implemented', { fakeRequest: true, eventType, accountId });
+				alert('not implemented');
+		}
+		this.calculateLadder(0);
+	}
+
+
+
+	getUpgradeCost(level: number) {
+		return Math.round(Math.pow(this.state.currentLadder.number + 1, level));
+	}
+
+	getVinegarThrowCost() {
+		return this.state.infoData.baseVinegarNeededToThrow * this.state.currentLadder.number;
+	}
+
+	getAutoPromoteGrapeCost(rank: number) {
+		let infoData = this.state.infoData;
+		let minPeople = Math.max(infoData.minimumPeopleForPromote, this.state.currentLadder.number);
+		let divisor = Math.max(rank - minPeople + 1, 1);
+		return Math.floor(infoData.baseGrapesNeededToAutoPromote / divisor);
+	}
+
+	getBiasCost(ranker: Ranker) {
+		return this.getUpgradeCost(ranker.bias + 1);
+	}
+	getMultiplierCost(ranker: Ranker) {
+		return this.getUpgradeCost(ranker.multiplier);
+	}
+
+	canRequest(type: 'asshole' | 'auto-promote' | 'bias' | 'multi' | 'promote' | 'vinegar', accountId = this.state.yourRanker.accountId) {
+		let ranker = this.state.rankersById[accountId];
+		switch (type) {
+			case 'bias': {
+				return this.getBiasCost(ranker) <= ranker.points;
+			}
+			case 'multi': {
+				return this.getMultiplierCost(ranker) <= ranker.power;
+			}
+			case 'vinegar': {
+				return this.getVinegarThrowCost() <= ranker.vinegar;
+			}
+			case 'promote': {
+				return !!'TODO';
+			}
+			case 'auto-promote': {
+				return !!'TODO';
+			}
+			case 'asshole': {
+				return !!'TODO';
+			}
+			default:
+				return false;
+		}
+	}
+
 }
 
 @GlobalComponent
@@ -380,6 +465,7 @@ class FairLadderVue extends VueWithProps({
 	@VueTemplate
 	get _t() {
 		let record = this.tableData[0];
+		let ranker = this.tableData[0];
 		return `
 			<LADDER>
 				<a-table
@@ -389,31 +475,78 @@ class FairLadderVue extends VueWithProps({
 						:rowKey="(record) => record.accountId"
 						:rowClassName="(record, index)=>rowClassName(record)"
 						:pagination="pagination"
-						tableLayout="fixed"
+						x-tableLayout="fixed"
 						>
-					    <template #headerCell="{ column }">
-							<template v-if="column.key === 'username'">
-								<span>
-								smile-outlined
-								Name
-								</span>
+					    <template #headerCell="{ column, text }">
+							<template v-if="column.key == 'username'">
+								<b style="width: 1em;display:inline-flex;">
+								</b>Username
+							</template>
+						</template>
+						<template #bodyCell="{ text, record: ranker, index, column }">
+							<template v-if="column.key == 'rank'">
+								<span style="opacity: 0.2;">{{'0000'.slice((text+'').length)}}</span>{{text}}
+							</template>
+							<template v-if="column.key == 'username'">
+								<a-tooltip
+										placement="bottomLeft"
+										>
+									<b style="width: 1em;display:inline-flex;justify-content: center;"
+											:style="{opacity:ranker.timesAsshole?1:0.1}">
+										{${this.assholeTag(ranker) || '@'}}
+									</b>{{text}}
+
+									<template #title>
+										<div v-if="ranker.timesAsshole">
+											Pressed Asshole Button {{ranker.timesAsshole}} times
+										</div>
+										<div v-if="!ranker.growing">
+											Promoted
+										</div>
+										id:{{ranker.accountId}}
+									</template>
+								</a-tooltip>
 							</template>
 						</template>
 				</a-table>
-
-				<a-checkbox v-model:checked="onlyMe"> Show You </a-checkbox>
 			</LADDER>
 		`
 	}
-	get pageSize() {
-		return this.nearRankers * 2 + 1;
+	pageSize = 29;//15;
+	currentPage = -1;
+	get pagination(): antd.TableProps<Ranker>['pagination'] {
+		if (this.currentPage == -1) {
+			this.currentPage = Math.ceil(this.ladder.state.yourRanker.rank / this.pageSize);
+		}
+		return {
+			defaultPageSize: this.pageSize,
+			defaultCurrent: this.currentPage,
+			// hideOnSinglePage: true,
+			pageSize: this.pageSize,
+			showSizeChanger: true,
+			current: this.currentPage,
+			onChange: (page: number, size: number) => {
+				this.currentPage = page;
+			},
+			onShowSizeChange: (page: number, size: number) => {
+				this.pageSize = size;
+				setTimeout(() => {
+					this.currentPage = Math.ceil(this.ladder.state.yourRanker.rank / this.pageSize);
+					console.log({
+						rank: this.ladder.state.yourRanker.rank,
+						page: this.currentPage,
+						size
+					})
+				});
+			},
+			pageSizeOptions: Array(30).fill(0).map((e, i) => i + 1).reverse(),
+		};
 	}
-	nearRankers = 7;
 	columns: Exclude<antd.TableProps<Ranker>['columns'], undefined> = [
-		{ title: '#', dataIndex: 'rank' },
+		{ title: '#', dataIndex: 'rank', key: 'rank', width: 'calc(16px + 4ch)', align: 'right' },
 		{ title: 'Username', dataIndex: 'username', key: 'username' },
-		{ title: 'Power', dataIndex: 'powerFormatted', key: 'power', align: 'right' },
-		{ title: 'Points', dataIndex: 'pointsFormatted', key: 'points', align: 'right' },
+		{ title: 'Power', dataIndex: 'powerFormatted', key: 'power', align: 'right', width: '30%' },
+		{ title: 'Points', dataIndex: 'pointsFormatted', key: 'points', align: 'right', width: '30%' },
 	];
 	constructor(...a: any[]) {
 		super(...a);
@@ -429,25 +562,24 @@ class FairLadderVue extends VueWithProps({
 	}
 	get centeredLimits() {
 		let state = this.ladder.state;
+		let half = ~~(this.pageSize / 2), extra = this.pageSize % 2;
 		let middleRank = state.yourRanker.rank;
-		middleRank = Math.min(middleRank, state.rankers.length - this.nearRankers);
-		middleRank = Math.max(middleRank, this.nearRankers + 1);
-		return { min: middleRank - this.nearRankers + 1, max: middleRank + this.nearRankers };
+		middleRank = Math.min(middleRank, state.rankers.length - half);
+		middleRank = Math.max(middleRank, half + 1);
+		return { min: middleRank - half + 1, max: middleRank + half - 1 + extra };
 	}
 	get tableData() {
 		return this.ladder.state.rankers;
-	}
-	get pagination() {
-		return {
-			defaultPageSize: this.pageSize,
-			defaultCurrent: ~~(this.ladder.state.yourRanker.rank / this.pageSize) + 1,
-			hideOnSinglePage: true,
-		};
 	}
 	rowClassName(record: Ranker) {
 		return {
 			'ranker-row-you': record.you,
 			'ranker-row-promoted': !record.growing,
 		};
+	}
+	assholeTag(ranker: Ranker) {
+		let tags = this.ladder.state.infoData.assholeTags;
+		if (ranker.timesAsshole < tags.length) return tags[ranker.timesAsshole];
+		return tags[tags.length - 1];
 	}
 }

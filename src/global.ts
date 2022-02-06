@@ -26,3 +26,12 @@ class UserData {
 		return Vue.reactive(this);
 	}
 }
+
+function unescapeHtml(s: string) {
+	return s.replace(/&.{1,10}?;/g, c => {
+		let a = document.createElement('b');
+		a.innerHTML = c;
+		console.log('unescapeHtml', [s, c, a.innerText]);
+		return a.innerText;
+	});
+}
