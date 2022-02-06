@@ -287,7 +287,7 @@ class FairLadder {
 
 			// Calculating Points & Power
 			if (rank != 1) {
-				ranker.power += Math.floor((ranker.bias + rank - 1) * secondsPassed);
+				ranker.power += Math.floor((ranker.bias + rank - 1) * ranker.multiplier * secondsPassed);
 			}
 			ranker.points += Math.floor(ranker.power * secondsPassed);
 
@@ -381,7 +381,7 @@ class FairLadder {
 	request(type: 'asshole' | 'auto-promote' | 'bias' | 'multi' | 'promote' | 'vinegar') {
 		if (!this.socket) throw 0;
 		if (!this.canRequest(type, this.state.yourRanker.accountId)) {
-			console.log(`fakeRequest: %O can't do %O!`, this.state.yourRanker, type);
+			console.log(`fakeRequest: %O can't do %O!`, Vue.toRaw(this.state.yourRanker), type);
 		}
 		this.socket.send(`/app/ladder/post/${type}`, { uuid: this.userData.uuid });
 	}
@@ -389,9 +389,9 @@ class FairLadder {
 	fakeUpdate(secondsPassed: number = 1) {
 		this.calculateLadder(secondsPassed);
 	}
-	fakeRequest(eventType: SocketLadderEvent['eventType'], accountId: accountId) {
+	fakeRequest(eventType: SocketLadderEvent['eventType'], accountId: accountId = this.state.yourRanker.accountId) {
 		if (!this.canRequest(eventType.toLowerCase().replace(/_/g, '-') as any, accountId)) {
-			console.log(`fakeRequest: %O can't do %O!`, this.state.rankersById[accountId], eventType);
+			console.log(`fakeRequest: %O can't do %O!`, Vue.toRaw(this.state.rankersById[accountId]), eventType);
 		}
 		switch (eventType) {
 			case 'BIAS':
@@ -435,10 +435,10 @@ class FairLadder {
 		return Math.floor(infoData.baseGrapesNeededToAutoPromote / divisor);
 	}
 
-	getBiasCost(ranker: Ranker) {
+	getBiasCost(ranker: Ranker = this.state.yourRanker) {
 		return this.getUpgradeCost(ranker.bias + 1);
 	}
-	getMultiplierCost(ranker: Ranker) {
+	getMultiplierCost(ranker: Ranker = this.state.yourRanker) {
 		return this.getUpgradeCost(ranker.multiplier);
 	}
 

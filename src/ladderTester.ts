@@ -32,9 +32,33 @@ class LadderTesterVue extends VueWithProps({
 				</a-switch>
 				<br> <br>
 
-				<a-button type="primary">
-					TEST
+				<a-button type="primary" @click="${this.ladder.fakeRequest('MULTI')}">
+					Multi
 				</a-button>
+				can:{${this.ladder.canRequest('multi')}}
+				({${this.format(this.ladder.state.yourRanker.power)}} / {${this.format(this.ladder.getMultiplierCost())}})
+				<a-progress title="bias" :percent="${
+					+(this.ladder.state.yourRanker.power / this.ladder.getMultiplierCost() * 100).toFixed(0)
+				}" />
+
+				<br> <br>
+				<a-button type="primary" @click="${this.ladder.fakeRequest('BIAS')}">
+					Bias
+				</a-button>
+				can:{${this.ladder.canRequest('bias')}}
+				({${this.format(this.ladder.state.yourRanker.points)}} / {${this.format(this.ladder.getBiasCost())}})
+				<a-progress title="bias" :percent="${
+					+(this.ladder.state.yourRanker.points / this.ladder.getBiasCost() * 100).toFixed(0)
+				}" color="yellow" />
+
+				
+				<br> <br>
+				<a-input-number v-model:value="yourRanker.multiplier">
+					<template #addonBefore>multi</template>
+				</a-input-number>
+				<a-input-number v-model:value="yourRanker.bias">
+					<template #addonBefore>bias</template>
+				</a-input-number>
 
 			</TESTER-VUE>
 		`;
@@ -49,7 +73,13 @@ class LadderTesterVue extends VueWithProps({
 	mounted() {
 		setInterval(() => this.tick(), 100);
 	}
+	format(n:number){
+		return numberFormatter.format(n);
+	}
 
+	get yourRanker(){
+		return this.ladder.state.yourRanker;
+	}
 	tick() {
 		if (this.ticking) {
 			this.passedTime += 100;
