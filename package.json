@@ -11,7 +11,7 @@
     "@dimava/poopjs": "^1.3.0",
     "@dimava/vue-prop-decorator-a-variation": "^0.3.0",
     "@stomp/stompjs": "^6.1.2",
-    "ant-design-vue": "next",
+    "ant-design-vue": "beta",
     "sockjs-client": "^1.5.2",
     "swarm-numberformat": "^0.4.0",
     "typescript": "latest",

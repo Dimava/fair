@@ -45,6 +45,16 @@ class Ranker {
 		}
 		return ranker;
 	}
+
+	get powerFormatted() {
+		return `${numberFormatter.format(this.power)
+			} [+${(this.bias + '').padStart(2, '0')
+			} x${(this.multiplier + '').padStart(2, '0')
+			}]`;
+	}
+	get pointsFormatted() {
+		return numberFormatter.format(this.points);
+	}
 }
 class YouRanker extends Ranker {
 	you = true;
@@ -369,44 +379,62 @@ class FairLadderVue extends VueWithProps({
 }) {
 	@VueTemplate
 	get _t() {
+		let record = this.tableData[0];
 		return `
 			<LADDER>
 				<a-table
-					:columns="columns"
-					:data-source="tableData"
-					size="small"
-					:rowClassName="(record, index)=>rowClassName(record)"
-					:pagination="pagination"
-					tableLayout="fixed"
-					>
+						:columns="columns"
+						:data-source="tableData"
+						size="small"
+						:rowKey="(record) => record.accountId"
+						:rowClassName="(record, index)=>rowClassName(record)"
+						:pagination="pagination"
+						tableLayout="fixed"
+						>
+					    <template #headerCell="{ column }">
+							<template v-if="column.key === 'username'">
+								<span>
+								smile-outlined
+								Name
+								</span>
+							</template>
+						</template>
 				</a-table>
 
 				<a-checkbox v-model:checked="onlyMe"> Show You </a-checkbox>
 			</LADDER>
 		`
 	}
-	onlyMe = true;
 	get pageSize() {
 		return this.nearRankers * 2 + 1;
 	}
 	nearRankers = 7;
-	get columns() {
-		return [
-			{ title: '#', dataIndex: 'rank' },
-			{ title: 'Username', dataIndex: 'username' },
-			{ title: 'Power', dataIndex: 'power' },
-			{ title: 'Points', dataIndex: 'points' },
+	columns: Exclude<antd.TableProps<Ranker>['columns'], undefined> = [
+		{ title: '#', dataIndex: 'rank' },
+		{ title: 'Username', dataIndex: 'username', key: 'username' },
+		{ title: 'Power', dataIndex: 'powerFormatted', key: 'power', align: 'right' },
+		{ title: 'Points', dataIndex: 'pointsFormatted', key: 'points', align: 'right' },
+	];
+	constructor(...a: any[]) {
+		super(...a);
+		this.columns[1].filters = [
+			{ text: 'Center yourself', value: true }
 		];
+		this.columns[1].onFilter = (value, ranker: Ranker) => {
+			if (!value) return true;
+			if (ranker.rank == 1) return true;
+			return this.centeredLimits.min <= ranker.rank
+				&& ranker.rank <= this.centeredLimits.max;
+		}
+	}
+	get centeredLimits() {
+		let state = this.ladder.state;
+		let middleRank = state.yourRanker.rank;
+		middleRank = Math.min(middleRank, state.rankers.length - this.nearRankers);
+		middleRank = Math.max(middleRank, this.nearRankers + 1);
+		return { min: middleRank - this.nearRankers + 1, max: middleRank + this.nearRankers };
 	}
 	get tableData() {
-		if (this.onlyMe) {
-			let state = this.ladder.state;
-			let middleRank = state.yourRanker.rank;
-			middleRank = Math.min(middleRank, state.rankers.length - this.nearRankers);
-			middleRank = Math.max(middleRank, this.nearRankers + 1);
-			let rankers = [state.firstRanker, ...state.rankers.slice(middleRank - this.nearRankers, middleRank + this.nearRankers)];
-			return rankers;
-		}
 		return this.ladder.state.rankers;
 	}
 	get pagination() {
@@ -417,6 +445,9 @@ class FairLadderVue extends VueWithProps({
 		};
 	}
 	rowClassName(record: Ranker) {
-		return record.you ? 'row-you' : '';
+		return {
+			'ranker-row-you': record.you,
+			'ranker-row-promoted': !record.growing,
+		};
 	}
 }

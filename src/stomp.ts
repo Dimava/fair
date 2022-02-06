@@ -157,7 +157,7 @@ class FairSocket {
 		] as const) {
 			// just logging everything
 			this.stompClient[k] = (...a) => {
-				if (localStorage.getItem('stompClient.logEvents'))
+				if (localStorage.getItem('stompClient.debug.events'))
 					console.warn(k, ...a);
 				(this as any)[k]?.(...a);
 			}
@@ -196,6 +196,8 @@ class FairSocket {
 		} else {
 			if (number != undefined) throw new Error('bad usage');
 		}
+		if (localStorage.getItem('stompClient.debug.send'))
+			console.warn('Send', destination, data);
 		this.stompClient.send(destination, {}, JSON.stringify(data));
 	}
 	subscribe<K extends Extract<keyof FairSocketSubscribeResponseMap, `${string}$${string}`>>(destination: K, listener: (data: FairSocketSubscribeResponseMap[K]) => void, request: { uuid: uuid }, number: number): StompJs.StompSubscription;
@@ -207,9 +209,12 @@ class FairSocket {
 		} else {
 			if (number != undefined) throw new Error('bad usage');
 		}
+		if (localStorage.getItem('stompClient.debug.subscribe'))
+			console.warn('Subscribed to', destination);
 		return this.stompClient.subscribe(destination, (message) => {
 			let data = JSON.parse(message.body || 'null');
-			console.warn(destination, data, message);
+			if (localStorage.getItem('stompClient.debug.subscribe.event'))
+				console.warn(destination, data, message);
 			listener(data);
 		}, request);
 	}

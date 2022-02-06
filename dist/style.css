@@ -54,6 +54,10 @@ ladder td {
     padding-top: 0 !important;
     padding-bottom: 0 !important;
 }
-ladder tr.row-you {
+ladder tr.ranker-row-you {
     background: cyan;
+}
+ladder tr.ranker-row-promoted {
+    background: #eee;
+    opacity: 0.7;
 }

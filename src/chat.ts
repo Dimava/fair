@@ -102,7 +102,6 @@ class FairChat {
 
 }
 
-
 @GlobalComponent
 class FairChatVue extends VueWithProps({
 	chat: FairChat,

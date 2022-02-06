@@ -15,8 +15,8 @@ ladder.socket = socket;
 ladder.userData = userData;
 
 
-// let _l = JSON.parse(localStorage.getItem('_ladder')!);
-// ladder.handleLadderInit(_l as any);
+let _l = JSON.parse(localStorage.getItem('_ladder')!);
+ladder.handleLadderInit(_l as any);
 
 class AppVue extends VueWithProps({
 	chat: FairChat,
@@ -35,16 +35,16 @@ class AppVue extends VueWithProps({
 						:loading="${this.socket.state.connectionRequested}"
 						@click="connectSocket"
 						> Connect Socket </a-button>
-					<a-button v-if="${!this.chat.state.connected}"
-						:disabled="${!this.socket.state.connected}"
-						:loading="${this.chat.state.connectionRequested}"
-						@click="connectChat"
-						> Connect Chat </a-button>
 					<a-button v-if="${!this.ladder.state.connected}"
 						:disabled="${!this.socket.state.connected}"
 						:loading="${this.ladder.state.connectionRequested}"
 						@click="connectLadder"
 						> Connect Ladder </a-button>
+					<a-button v-if="${!this.chat.state.connected}"
+						:disabled="${!this.socket.state.connected}"
+						:loading="${this.chat.state.connectionRequested}"
+						@click="connectChat"
+						> Connect Chat </a-button>
 				</a-space>
 				<a-row>
 					<a-col :span="14">
