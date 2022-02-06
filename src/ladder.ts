@@ -399,7 +399,7 @@ class FairLadderVue extends VueWithProps({
 			let state = this.ladder.state;
 			let middleRank = state.yourRanker.rank;
 			middleRank = Math.min(middleRank, state.rankers.length - this.nearRankers);
-			middleRank = Math.max(middleRank, this.nearRankers);
+			middleRank = Math.max(middleRank, this.nearRankers + 1);
 			let rankers = [state.firstRanker, ...state.rankers.slice(middleRank - this.nearRankers, middleRank + this.nearRankers)];
 			return rankers;
 		}
