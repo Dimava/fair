@@ -1,17 +1,81 @@
 
 type DecimalString = string & { _?: 'DecimalString' };
 
-interface SocketLadderEvent {
-	eventType: string,
-	accountId: accountId,
+type _ConstructEvent<EvType extends string, Data extends {}> = 
+	| {eventType: EvType} & Data;
+interface SocketLadderEventMap {
+	BIAS: {
+		eventType: 'BIAS',
+		accountId: accountId,
+	};
+	MULTI: {
+		eventType: 'MULTI',
+		accountId: accountId,
+	};
+	VINEGAR: {
+		eventType: 'VINEGAR',
+		accountId: accountId,
+		data: {
+			amount: DecimalString,
+			success: boolean,
+		}
+	};
+	SOFT_RESET_POINTS: {
+		eventType: 'SOFT_RESET_POINTS',
+		accountId: accountId,
+	};
+	PROMOTE: {
+		eventType: 'PROMOTE',
+		accountId: accountId,
+	};
+	AUTO_PROMOTE: {
+		eventType: 'AUTO_PROMOTE',
+		accountId: accountId,
+	};
+	JOIN: {
+		eventType: 'JOIN',
+		accountId: accountId,
+		data: {
+			username: string,
+		}
+	};
+	NAME_CHANGE: {
+		eventType: 'NAME_CHANGE',
+		accountId: accountId,
+		data: string,
+	};
+	RESET: {
+		eventType: 'RESET',
+	};
 }
+type SocketLadderEvent = SocketLadderEventMap[keyof SocketLadderEventMap]; 
 interface SocketChatMessage {
-	username: string,
-	accountId: accountId,
-	message: string,
-	timeCreated: string,
-	timesAsshole: number,
+	username: string;
+	accountId: accountId;
+	message: string;
+	timeCreated: string;
+	timesAsshole: number;
 }
+interface SocketRanker {
+	accountId: accountId;
+	bias: number;
+	growing: boolean;
+	multiplier: number;
+	points: DecimalString;
+	power: DecimalString;
+	rank: number;
+	timesAsshole: number;
+	username: string;
+	you: boolean;
+}
+interface SocketYouRanker extends SocketRanker {
+	autoPromote: boolean;
+	grapes: DecimalString;
+	vinegar: DecimalString;
+	you: true;
+}
+
+
 interface FairSocketSendRequestMap {
 	'/app/account/login': { uuid: uuid },
 	'/app/account/name': { uuid: uuid, content: string & { _?: 'newUsername' } },
@@ -32,13 +96,13 @@ interface FairSocketSubscribeResponseMap {
 	'/topic/ladder/$ladderNum': { events: SocketLadderEvent[], secondsPassed: number },
 	'/user/queue/account/login': {
 		status: 'OK' | 'CREATED' | '?',
-		content?: {
-			uuid: uuid, accountId: number, highestCurrentLadder: number
+		content: {
+			uuid: uuid, accountId: number, highestCurrentLadder: number,
 		}
 	},
 	'/user/queue/chat/': {
 		status: 'OK' | '?',
-		content?: {
+		content: {
 			currentChatNumber: number,
 			messages: SocketChatMessage[],
 		}
@@ -55,7 +119,13 @@ interface FairSocketSubscribeResponseMap {
 	},
 	'/user/queue/ladder/': {
 		status: 'OK' | '?',
-		content?: unknown & { _?: 'LadderData' },
+		content: {
+			currentLadder: { number: number },
+			firstRanker: SocketRanker,
+			yourRanker: SocketYouRanker,
+			rankers: SocketRanker[],
+			startRank: number,
+		}
 	},
 	'/user/queue/ladder/updates': {
 		events: SocketLadderEvent[],
@@ -104,6 +174,8 @@ class FairSocket {
 	}
 	disconnect() {
 		this.stompClient.disconnect();
+		this.state.connectionRequested = false;
+		this.state.connected = false;
 	}
 	onConnect() {
 		this.state.connectionRequested = false;

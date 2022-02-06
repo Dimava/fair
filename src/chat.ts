@@ -16,7 +16,7 @@ class FairChat {
 	ladderNum = 1;
 
 	userData = new UserData();
-	data = Vue.reactive({
+	state = Vue.reactive({
 		connected: false,
 		connectionRequested: false,
 		currentChatNumber: -1,
@@ -28,7 +28,8 @@ class FairChat {
 	connect() {
 		if (!this.socket) throw 0;
 		if (!this.userData.uuid) throw 0;
-		if (this.data.connected || this.data.connectionRequested) return false;
+		if (this.state.connected || this.state.connectionRequested) return false;
+		this.state.connectionRequested = true;
 
 		this.chatSubscription = this.socket.subscribe('/topic/chat/$ladderNum', (data) => {
 			this.handleChatUpdates(data);
@@ -40,26 +41,20 @@ class FairChat {
 	}
 
 
-	initChat(ladderNum: number) {
-		if (!this.socket) throw 0;
-		this.socket.send('/app/chat/init/$ladderNum', { uuid: this.userData.uuid }, ladderNum);
-	}
-
-
 	handleChatUpdates(message: FairSocketSubscribeResponseMap['/topic/chat/$ladderNum']) {
 		if (!message) return;
-		this.data.messages.unshift(message);
-		this.data.loading = false;
+		this.state.messages.unshift(message);
+		this.state.loading = false;
 		// if (chatData.messages.length > 30) chatData.messages.pop();
 	}
 	handleChatInit(message: FairSocketSubscribeResponseMap['/user/queue/chat/']) {
 		if (message.status === "OK") {
 			if (message.content) {
-				this.data.connectionRequested = false;
-				this.data.connected = true;
+				this.state.connectionRequested = false;
+				this.state.connected = true;
 				this.ladderNum = message.content.currentChatNumber;
-				this.data.currentChatNumber = message.content.currentChatNumber;
-				this.data.messages = message.content.messages;
+				this.state.currentChatNumber = message.content.currentChatNumber;
+				this.state.messages = message.content.messages;
 			}
 		}
 	}
@@ -73,7 +68,7 @@ class FairChat {
 		this.socket.send('/app/chat/post/$currentChatNumber', {
 			uuid: this.userData.uuid,
 			content: message,
-		}, this.data.currentChatNumber);
+		}, this.state.currentChatNumber);
 	}
 
 
@@ -120,16 +115,16 @@ class FairChatVue extends VueWithProps({
 
 	@VueTemplate
 	get _t() {
-		let message = this.chat.data.messages[0];
+		let message = this.chat.state.messages[0];
 		return `
 			<CHAT>
 				<a-list
 						class="fair-chat"
-						:data-source="${this.chat.data.messages}"
+						:data-source="${this.chat.state.messages}"
 						size="small" bordered
 						>
 					<template #header>
-						<h2>Welcome to the Chad#{${this.chat.data.currentChatNumber}} !</h2>
+						<h2>Welcome to the Chad#{${this.chat.state.currentChatNumber}} !</h2>
 					</template>
 					<template #renderItem="{ item: message }">
 						<a-list-item>
@@ -162,7 +157,7 @@ class FairChatVue extends VueWithProps({
 											v-model:value="newMessage"
 											placeholder="Chad is listening..."
 											@search="sendMessage"
-											:loading="${this.chat.data.loading}"
+											:loading="${this.chat.state.loading}"
 											enter-button="Send"
 											/>
 								</template>
@@ -191,10 +186,10 @@ class FairChatVue extends VueWithProps({
 		return a.innerText;
 	}
 	async sendMessage() {
-		this.chat.data.loading = true;
+		this.chat.state.loading = true;
 		await new Promise(r => setTimeout(r, 400));
 		this.chat.sendMessage(this.newMessage);
-		while (this.chat.data.loading) {
+		while (this.chat.state.loading) {
 			await new Promise(r => setTimeout(r, 100));
 		}
 		this.newMessage = '';

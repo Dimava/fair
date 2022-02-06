@@ -3,6 +3,9 @@ function VueWithProps<T extends Record<string, VuePropDecoratorAVariation.ValidP
 }
 const VueTemplate = VuePropDecoratorAVariation.Template;
 const GlobalComponent = VuePropDecoratorAVariation.Component;
+function VueReactive<T extends object>(target: T) {
+	return Vue.reactive(target) as T;
+}
 
 type accountId = number & { _?: 'accountId' };
 type uuid = string & { _?: 'uuid' };

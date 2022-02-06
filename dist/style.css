@@ -50,3 +50,10 @@ chat {
 	display: inline-flex;
 	justify-content: center;
 }
+ladder td {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+ladder tr.row-you {
+    background: cyan;
+}

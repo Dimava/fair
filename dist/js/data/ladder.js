@@ -320,10 +320,23 @@ function calculateLadder(delta) {
             ladderStats.growingRankerCount += 1;
             // Calculating Points & Power
             if (ladderData.rankers[i].rank !== 1)
-                ladderData.rankers[i].power = ladderData.rankers[i].power.add(
-                    new Decimal((ladderData.rankers[i].bias + ladderData.rankers[i].rank - 1) * ladderData.rankers[i].multiplier)
-                        .mul(new Decimal(delta).floor()));
-            ladderData.rankers[i].points = ladderData.rankers[i].points.add(ladderData.rankers[i].power.mul(delta).floor());
+                ladderData.rankers[i].power =
+					ladderData.rankers[i].power
+						.add(
+                    		new Decimal(
+								(ladderData.rankers[i].bias + ladderData.rankers[i].rank - 1)
+								* ladderData.rankers[i].multiplier
+							).mul(
+								new Decimal(delta).floor()
+							)
+						);
+            ladderData.rankers[i].points = 
+				ladderData.rankers[i].points
+				.add(
+					ladderData.rankers[i].power
+						.mul(delta)
+						.floor()
+				);
 
             // Calculating Vinegar based on Grapes count
             if (ladderData.rankers[i].rank !== 1 && ladderData.rankers[i].you)
