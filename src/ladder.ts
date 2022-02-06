@@ -22,6 +22,9 @@ class Ranker {
 
 	rank: number = 0;
 	autoPromote: boolean = false;
+
+	rankHistory: { oldRank: number, rank: number, currentTime: number }[] = [];
+
 	static from(source: SocketYouRanker): YouRanker;
 	static from(source: SocketRanker): Ranker;
 	static from(source: SocketRanker | SocketYouRanker): Ranker | YouRanker {
@@ -306,6 +309,15 @@ class FairLadder {
 			let rank = index + 1;
 			if (rank == ranker.rank) return;
 
+			ranker.rankHistory.unshift({
+				currentTime: this.state.currentTime,
+				oldRank: ranker.rank,
+				rank,
+			});
+			if (ranker.rankHistory.length > 10) {
+				ranker.rankHistory.pop();
+			}
+
 			if (rank < ranker.rank) {
 				// rank increase, gain grapes
 				for (let r = ranker.rank; r < rank; r++) {
@@ -506,6 +518,17 @@ class FairLadderVue extends VueWithProps({
 										id:{{ranker.accountId}}
 									</template>
 								</a-tooltip>
+								<div style="float: right;">
+									<div
+											v-for="a of ${this.getVisibleEvents(ranker)}"
+											style="display: inline-block; width: 1ch;"
+											:style="{opacity: a.opacity, color: a.delta>0?'red':'green'}"
+											>
+										{{ a.delta > 0 ? '▼' : '▲' }}
+									</div>
+								</div>
+								
+
 							</template>
 						</template>
 				</a-table>
@@ -581,5 +604,21 @@ class FairLadderVue extends VueWithProps({
 		let tags = this.ladder.state.infoData.assholeTags;
 		if (ranker.timesAsshole < tags.length) return tags[ranker.timesAsshole];
 		return tags[tags.length - 1];
+	}
+
+	getVisibleEvents(ranker: Ranker) {
+		const visibleDuration = 10;
+		const disappearDuration = 10;
+		let now = this.ladder.state.currentTime;
+		return ranker.rankHistory
+			.map(e => {
+				let timeSince = now - e.currentTime;
+				let opacity = timeSince < visibleDuration ? 1 : (1 - (timeSince - visibleDuration) / disappearDuration);
+				return { delta: e.rank - e.oldRank, opacity };
+			}).filter(e => e.opacity > 0)
+			.flatMap(e => {
+				return Array(Math.abs(e.delta)).fill(e);
+			})
+			.slice(-10).reverse();
 	}
 }
