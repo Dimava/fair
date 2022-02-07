@@ -7,6 +7,20 @@ class Player {
 	}
 }
 
+type _MakeRankerHistoryEvent<T extends string, D extends {} = {}> = {
+	type: T, delta: number, rank: number, oldRank: number, currentTime: number,
+} & D;
+
+type RankerHistoryEventMap = {
+	'UPRANK': _MakeRankerHistoryEvent<'UPRANK'>,
+	'DOWNRANK': _MakeRankerHistoryEvent<'DOWNRANK'>,
+	'MULTI': _MakeRankerHistoryEvent<'MULTI'>,
+	'BIAS': _MakeRankerHistoryEvent<'BIAS'>,
+	'LAST': _MakeRankerHistoryEvent<'LAST'>,
+	'THROW_VINEGAR': _MakeRankerHistoryEvent<'THROW_VINEGAR', { target: accountId, amount: number, success: boolean }>,
+	'GOT_VINEGARED': _MakeRankerHistoryEvent<'GOT_VINEGARED', { source: accountId, amount: number, success: boolean }>,
+};
+
 class Ranker {
 	accountId: accountId = 0;
 	username: string = '';
@@ -23,7 +37,7 @@ class Ranker {
 	rank: number = 0;
 	autoPromote: boolean = false;
 
-	rankHistory: { oldRank: number, rank: number, currentTime: number }[] = [];
+	history: RankerHistoryEventMap[keyof RankerHistoryEventMap][] = Vue.shallowReactive([]);
 
 	static from(source: SocketYouRanker): YouRanker;
 	static from(source: SocketRanker): Ranker;
@@ -58,6 +72,32 @@ class Ranker {
 	get pointsFormatted() {
 		return numberFormatter.format(this.points);
 	}
+
+	pushHistory<T extends keyof RankerHistoryEventMap>(
+		type: T, data: Omit<RankerHistoryEventMap[T], 'type' | 'delta' | 'rank'>
+	) {
+		if (data.oldRank == 0) data.oldRank = this.rank;
+
+		let entry: RankerHistoryEventMap[keyof RankerHistoryEventMap] | _MakeRankerHistoryEvent<string> = {
+			type,
+			delta: this.rank - data.oldRank,
+			rank: this.rank,
+			...data,
+		};
+		// Object.freeze(entry);
+		this.history.unshift(entry as RankerHistoryEventMap[keyof RankerHistoryEventMap]);
+		if (this.history.length > 30) this.history.pop();
+		return entry as RankerHistoryEventMap[T];
+	}
+	// getUniqueHistory(): Ranker['history'] {
+	// 	let first = this.history[0];
+	// 	return Vue.markRaw(
+	// 		Vue.toRaw(this.history).flatMap(e => {
+	// 			if (Math.abs(e.delta) <= 1) return [e];
+	// 			return Array(Math.abs(e.delta)).fill(e) as (typeof e)[];
+	// 		})
+	// 	);
+	// }
 }
 class YouRanker extends Ranker {
 	you = true;
@@ -145,12 +185,14 @@ class FairLadder {
 
 	handleEvent(event: SocketLadderEvent) {
 		console.log(event);
+		let currentTime = this.state.currentTime;
 
 		switch (event.eventType) {
 			case 'BIAS': {
 				let ranker = this.state.rankersById[event.accountId];
 				ranker.bias++;
 				ranker.points = 0;
+				ranker.pushHistory('BIAS', { currentTime, oldRank: 0 });
 				break;
 			}
 			case 'MULTI': {
@@ -159,6 +201,7 @@ class FairLadder {
 				ranker.bias = 0;
 				ranker.points = 0;
 				ranker.power = 0;
+				ranker.pushHistory('MULTI', { currentTime, oldRank: 0 });
 				break;
 			}
 			case 'VINEGAR': {
@@ -207,6 +250,9 @@ class FairLadder {
 				let ranker = new Ranker();
 				ranker.accountId = event.accountId;
 				ranker.username = unescapeHtml(event.data.username);
+				if (ranker.username.includes('\\u')) {
+					try { ranker.username = JSON.parse(`"${ranker.username}"`) } catch { }
+				}
 				ranker.rank = this.state.rankers.length + 1;
 				if (!this.state.rankers.find(e => e.accountId == event.accountId)) {
 					this.state.rankers.push(ranker);
@@ -229,14 +275,14 @@ class FairLadder {
 
 	handleInfo(message: FairSocketSubscribeResponseMap['/user/queue/info']) {
 		this.state.infoData = {
-			assholeLadder: message.assholeLadder,
-			assholeTags: message.assholeTags,
-			autoPromoteLadder: message.autoPromoteLadder,
-			baseGrapesNeededToAutoPromote: +message.baseGrapesNeededToAutoPromote,
-			baseVinegarNeededToThrow: +message.baseVinegarNeededToThrow,
-			manualPromoteWaitTime: message.manualPromoteWaitTime,
-			minimumPeopleForPromote: message.minimumPeopleForPromote,
-			pointsForPromote: +message.pointsForPromote,
+			assholeLadder: message.content.assholeLadder,
+			assholeTags: message.content.assholeTags.map(unescapeHtml),
+			autoPromoteLadder: message.content.autoPromoteLadder,
+			baseGrapesNeededToAutoPromote: +message.content.baseGrapesNeededToAutoPromote,
+			baseVinegarNeededToThrow: +message.content.baseVinegarNeededToThrow,
+			manualPromoteWaitTime: message.content.manualPromoteWaitTime,
+			minimumPeopleForPromote: message.content.minimumPeopleForPromote,
+			pointsForPromote: +message.content.pointsForPromote,
 		}
 	}
 
@@ -269,6 +315,7 @@ class FairLadder {
 
 	calculateLadder(secondsPassed: number) {
 		this.state.currentTime += secondsPassed;
+		let currentTime = this.state.currentTime;
 		// FIXME this uses 400ms per 8k rankers
 		this.state.rankers.sort((a, b) => b.points - a.points);
 
@@ -306,21 +353,20 @@ class FairLadder {
 		this.state.rankers.sort((a, b) => b.points - a.points);
 
 		this.state.rankers.forEach((ranker, index, list) => {
-			let rank = index + 1;
-			if (rank == ranker.rank) return;
+			let newRank = index + 1;
+			let oldRank = ranker.rank;
+			if (newRank == oldRank) return;
 
-			ranker.rankHistory.unshift({
-				currentTime: this.state.currentTime,
-				oldRank: ranker.rank,
-				rank,
-			});
-			if (ranker.rankHistory.length > 10) {
-				ranker.rankHistory.pop();
-			}
+			ranker.rank = newRank;
 
-			if (rank < ranker.rank) {
+			if (newRank < oldRank)
+				ranker.pushHistory('UPRANK', { currentTime, oldRank });
+			else
+				ranker.pushHistory('DOWNRANK', { currentTime, oldRank });
+
+			if (newRank < oldRank) {
 				// rank increase, gain grapes
-				for (let r = ranker.rank; r < rank; r++) {
+				for (let r = oldRank; r < newRank; r++) {
 					// let otherRanker = rankersOld[r];
 					if (ranker.growing && (ranker.bias > 0 || ranker.multiplier > 1)) {
 						ranker.grapes++;
@@ -328,7 +374,6 @@ class FairLadder {
 				}
 			}
 
-			ranker.rank = rank;
 		});
 
 		// Ranker on Last Place gains 1 Grape, only if he isn't the only one
@@ -336,6 +381,7 @@ class FairLadder {
 			let lastRanker = this.state.rankers[this.state.rankers.length - 1];
 			if (lastRanker.growing) {
 				lastRanker.grapes += ~~secondsPassed;
+				lastRanker.pushHistory('LAST', { currentTime, oldRank: 0 });
 			}
 		}
 		this.state.firstRanker = this.state.rankers[0];
@@ -439,7 +485,7 @@ class FairLadder {
 		return this.getUpgradeCost(ranker.bias + 1);
 	}
 	getMultiplierCost(ranker: Ranker = this.state.yourRanker) {
-		return this.getUpgradeCost(ranker.multiplier);
+		return this.getUpgradeCost(ranker.multiplier + 1);
 	}
 
 	canRequest(type: 'asshole' | 'auto-promote' | 'bias' | 'multi' | 'promote' | 'vinegar', accountId = this.state.yourRanker.accountId) {
@@ -478,6 +524,7 @@ class FairLadderVue extends VueWithProps({
 	get _t() {
 		let record = this.tableData[0];
 		let ranker = this.tableData[0];
+		let h = this.getHistory(ranker)[0];
 		return `
 			<LADDER>
 				<a-table
@@ -489,53 +536,90 @@ class FairLadderVue extends VueWithProps({
 						:pagination="pagination"
 						x-tableLayout="fixed"
 						>
-					    <template #headerCell="{ column, text }">
-							<template v-if="column.key == 'username'">
-								<b style="width: 1em;display:inline-flex;">
-								</b>Username
-							</template>
+					<template #headerCell="{ column, text }">
+						<template v-if="column.key == 'username'">
+							<b style="width: 1em;display:inline-flex;">
+							</b>Username
 						</template>
-						<template #bodyCell="{ text, record: ranker, index, column }">
-							<template v-if="column.key == 'rank'">
-								<span style="opacity: 0.2;">{{'0000'.slice((text+'').length)}}</span>{{text}}
-							</template>
-							<template v-if="column.key == 'username'">
-								<a-tooltip
-										placement="bottomLeft"
-										>
-									<b style="width: 1em;display:inline-flex;justify-content: center;"
-											:style="{opacity:ranker.timesAsshole?1:0.1}">
-										{${this.assholeTag(ranker) || '@'}}
-									</b>{{text}}
+					</template>
+					<template #bodyCell="{ text, record: ranker, index, column }">
+						<template v-if="column.key == 'rank'">
+							<span style="opacity: 0.2;">{{'0000'.slice((text+'').length)}}</span>{{text}}
+						</template>
+						<template v-if="column.key == 'username'">
+							<a-tooltip
+									placement="bottomLeft"
+									>
+								<b style="width: 1em;display:inline-flex;justify-content: center;"
+										:style="{opacity:ranker.timesAsshole?1:0.1}">
+									{${this.assholeTag(ranker) || '@'}}
+								</b>{{text}}
 
-									<template #title>
-										<div v-if="ranker.timesAsshole">
-											Pressed Asshole Button {{ranker.timesAsshole}} times
-										</div>
-										<div v-if="!ranker.growing">
-											Promoted
-										</div>
-										id:{{ranker.accountId}}
-									</template>
-								</a-tooltip>
-								<div style="float: right;">
-									<div
-											v-for="a of ${this.getVisibleEvents(ranker)}"
-											style="display: inline-block; width: 1ch;"
-											:style="{opacity: a.opacity, color: a.delta>0?'red':'green'}"
-											>
-										{{ a.delta > 0 ? '▼' : '▲' }}
+								<template #title>
+									<div v-if="ranker.timesAsshole">
+										Pressed Asshole Button {{ranker.timesAsshole}} times
 									</div>
-								</div>
-								
+									<div v-if="!ranker.growing">
+										Promoted
+									</div>
+									id:{{ranker.accountId}}
+								</template>
+							</a-tooltip>
+							<div style="float: right;" v-if="1">
+								<b v-for="${h} of ${this.getHistory(ranker)}"
+									style="display: inline-block;text-align:right;"
+									:style="h.style"
+								>{${h.text}}</b>
+							</div>
+							
 
-							</template>
 						</template>
+					</template>
+					<template #footer>
+						
+						<a-row type="flex" style="align-items: center;">
+							<a-col flex="9" />
+							<a-col flex="1" style="padding: 0 8px;">
+								<div style="white-space: nowrap;">
+									can:{${this.bias.can}}
+									({${this.bias.sPoints}} / {${this.bias.sCost}})
+									[{${this.bias.sValue}}]
+								</div>
+							</a-col>
+							<a-col flex="30%">
+								<a-progress size="small" :percent="${this.bias.percent}" />
+							</a-col>
+							<a-col flex="70px">
+								<a-button type="primary" class="button-green" :disabled="${!this.bias.canRequest}" @click="${this.bias.doRequest()}" block>
+									Bias
+								</a-button>
+							</a-col>
+						</a-row>
+						<a-row type="flex" style="align-items: center;">
+							<a-col flex="9" />
+							<a-col flex="1" style="padding: 0 8px;">
+								<div style="white-space: nowrap;">
+									can:{${this.multi.can}}
+									({${this.multi.sPoints}} / {${this.multi.sCost}})
+									[{${this.multi.sValue}}]
+								</div>
+							</a-col>
+							<a-col flex="30%">
+								<a-progress size="small" :percent="${this.multi.percent}" />
+							</a-col>
+							<a-col flex="70px">
+								<a-button type="primary" :disabled="${!this.multi.canRequest}" @click="${this.multi.doRequest()}" block>
+									Multi
+								</a-button>
+							</a-col>
+						</a-row>
+						
+					</template>
 				</a-table>
 			</LADDER>
 		`
 	}
-	pageSize = 29;//15;
+	pageSize = 15;
 	currentPage = -1;
 	get pagination(): antd.TableProps<Ranker>['pagination'] {
 		if (this.currentPage == -1) {
@@ -610,7 +694,7 @@ class FairLadderVue extends VueWithProps({
 		const visibleDuration = 10;
 		const disappearDuration = 10;
 		let now = this.ladder.state.currentTime;
-		return ranker.rankHistory
+		return ranker.history
 			.map(e => {
 				let timeSince = now - e.currentTime;
 				let opacity = timeSince < visibleDuration ? 1 : (1 - (timeSince - visibleDuration) / disappearDuration);
@@ -620,5 +704,101 @@ class FairLadderVue extends VueWithProps({
 				return Array(Math.abs(e.delta)).fill(e);
 			})
 			.slice(-10).reverse();
+	}
+	getHistory(ranker: Ranker) {
+		// console.time()
+		const visibleDuration = 10;
+		const disappearDuration = 10;
+		let now = this.ladder.state.currentTime;
+		const texts: Record<string, string | undefined> = {
+			UPRANK: '▲',
+			DOWNRANK: '▼',
+			LAST: '🥝',
+			BIAS: ' B ',
+			MULTI: ' M ',
+		};
+		const styleMap: Record<string, string | undefined> = {
+			UPRANK: 'color:green;width:1ch;',
+			DOWNRANK: 'color:red;width:1ch;',
+			LAST: 'width:1ch;',
+			BIAS: 'color:blue;width:2ch;',
+			MULTI: 'color:purple;width:2ch;',
+		};
+		let v = Vue.toRaw(ranker.history).slice(0, 10)
+			.flatMap(e => {
+				let timeSince = now - e.currentTime;
+				let opacity = timeSince < visibleDuration ? 1 : (1 - (timeSince - visibleDuration) / disappearDuration);
+				if (opacity <= 0) return []
+
+				let text = texts[e.type] || ` ?${e.type}? `;
+				let style = `opacity:${opacity}; ${styleMap[e.type] || ''}`;
+				let data = { text, style, ...e };
+
+				if (e.type != 'DOWNRANK' && e.type != 'UPRANK') return [data];
+				else return Array(Math.abs(e.delta)).fill(0).map(e => data);
+			}).slice(0, 10).reverse();
+		// console.timeEnd()
+		return Vue.markRaw(v);
+	}
+
+	format(n: number) {
+		return numberFormatter.format(n);
+	}
+
+	get bias() {
+		let value = this.ladder.state.yourRanker.bias;
+		let cost = this.ladder.getBiasCost();
+		let points = this.ladder.state.yourRanker.points;
+
+		return {
+			value, cost, points,
+			can: points >= cost,
+			percent: Math.min(100, Math.floor(points / cost * 100)),
+			sValue: '+' + value.toString().padStart(2, '0'),
+			sCost: this.format(cost),
+			sPoints: this.format(points),
+			canRequest: this.ladder.canRequest('bias'),
+			doRequest: () => {
+				this.ladder.request('bias');
+			},
+		};
+	}
+	get multi() {
+		let value = this.ladder.state.yourRanker.multiplier;
+		let cost = this.ladder.getMultiplierCost();
+		let points = this.ladder.state.yourRanker.power;
+
+		return {
+			value, cost, points,
+			can: points >= cost,
+			percent: Math.min(100, Math.floor(points / cost * 100)),
+			sValue: 'x' + value.toString().padStart(2, '0'),
+			sCost: this.format(cost),
+			sPoints: this.format(points),
+			canRequest: this.ladder.canRequest('multi'),
+			doRequest: () => {
+				this.ladder.request('multi');
+			},
+		};
+	}
+	frameDuration = '';
+	frames = '';
+	mounted() {
+		void (async () => {
+			let frames = [0];
+			let last = performance.now();
+			while (1) {
+				await new Promise(requestAnimationFrame);
+				let now = performance.now();
+				let delta = now - last;
+				if (delta > 30)
+					frames.unshift(delta);
+				last = now;
+				if (frames.length > 30) frames.pop();
+				this.frames = frames.map(e => e.toFixed(0).padStart(3, '0')).join(', ');
+				this.frameDuration = frames.slice(0, 10)
+					.reduce((v, e, i, a) => v + e / a.length, 0).toFixed(3);
+			}
+		})()
 	}
 }

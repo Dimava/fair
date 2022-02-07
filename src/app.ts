@@ -15,9 +15,6 @@ ladder.socket = socket;
 ladder.userData = userData;
 
 
-let _l = JSON.parse(localStorage.getItem('_ladder')!);
-ladder.handleLadderInit(_l as any);
-
 class AppVue extends VueWithProps({
 	chat: FairChat,
 	userData: UserData,
@@ -26,6 +23,8 @@ class AppVue extends VueWithProps({
 }) {
 	importModalOpened = false;
 	newUuid: uuid = '';
+
+	showFakeLadder = false;
 	@VueTemplate
 	get _t() {
 		return `
@@ -40,11 +39,18 @@ class AppVue extends VueWithProps({
 						:loading="${this.ladder.state.connectionRequested}"
 						@click="connectLadder"
 						> Connect Ladder </a-button>
-					<a-button v-if="${!this.chat.state.connected}"
+					<a-button v-if="${!this.chat.state.connected && !this.showFakeLadder}"
 						:disabled="${!this.socket.state.connected}"
 						:loading="${this.chat.state.connectionRequested}"
 						@click="connectChat"
 						> Connect Chat </a-button>
+					<a-button v-if="${!this.chat.state.connected && !this.showFakeLadder}"
+						:disabled="${!this.ladder.state.connected}"
+						@click="showFakeLadder=true"
+						> Ladder debug tools </a-button>
+					<a-button v-if="${!this.chat.state.connected && !this.ladder.state.connected}"
+						@click="loadFakeLadder"
+						> Load fake ladder </a-button>
 				</a-space>
 				<a-row>
 					<a-col :span="14">
@@ -53,7 +59,7 @@ class AppVue extends VueWithProps({
 					<a-col :span="10">
 						<FairChatVue v-if="${this.chat.state.connected}" :chat="chat" />
 
-						<LadderTesterVue v-else :ladder="ladder" />
+						<LadderTesterVue v-if="${this.showFakeLadder}" :ladder="ladder" />
 					</a-col>
 				</a-row>
 				<a-modal
@@ -103,6 +109,10 @@ class AppVue extends VueWithProps({
 			ladder.state.connectionRequested = false;
 			ladder.connect();
 		}, 1000);
+	}
+	loadFakeLadder() {
+		let _l = JSON.parse(localStorage.getItem('_ladder')!);
+		ladder.handleLadderInit(_l as any);
 	}
 }
 

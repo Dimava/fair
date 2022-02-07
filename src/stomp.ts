@@ -108,14 +108,17 @@ interface FairSocketSubscribeResponseMap {
 		}
 	},
 	'/user/queue/info': {
-		assholeLadder: number,
-		assholeTags: string[],
-		autoPromoteLadder: number,
-		baseGrapesNeededToAutoPromote: DecimalString,
-		baseVinegarNeededToThrow: DecimalString,
-		manualPromoteWaitTime: number,
-		minimumPeopleForPromote: number,
-		pointsForPromote: DecimalString,
+		status: 'OK' | '?',
+		content: {
+			assholeLadder: number,
+			assholeTags: string[],
+			autoPromoteLadder: number,
+			baseGrapesNeededToAutoPromote: DecimalString,
+			baseVinegarNeededToThrow: DecimalString,
+			manualPromoteWaitTime: number,
+			minimumPeopleForPromote: number,
+			pointsForPromote: DecimalString,
+		}
 	},
 	'/user/queue/ladder/': {
 		status: 'OK' | '?',
