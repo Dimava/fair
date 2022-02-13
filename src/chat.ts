@@ -25,6 +25,9 @@ class FairChat {
 	});
 
 	chatSubscription?: StompJs.StompSubscription;
+	constructor() {
+		return Vue.markRaw(this);
+	}
 	connect() {
 		if (!this.socket) throw 0;
 		if (!this.userData.uuid) throw 0;

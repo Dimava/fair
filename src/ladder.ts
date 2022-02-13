@@ -37,7 +37,11 @@ class Ranker {
 	rank: number = 0;
 	autoPromote: boolean = false;
 
-	history: RankerHistoryEventMap[keyof RankerHistoryEventMap][] = Vue.shallowReactive([]);
+	history: RankerHistoryEventMap[keyof RankerHistoryEventMap][] = [];
+
+	constructor() {
+		return Vue.markRaw(this);
+	}
 
 	static from(source: SocketYouRanker): YouRanker;
 	static from(source: SocketRanker): Ranker;
@@ -103,6 +107,7 @@ class YouRanker extends Ranker {
 	you = true;
 }
 
+
 class FairLadder {
 	socket?: FairSocket;
 	userData = new UserData();
@@ -142,6 +147,9 @@ class FairLadder {
 		currentTime: 0,
 	});
 	ladderSubscription: any;
+	constructor() {
+		return Vue.markRaw(this);
+	}
 	connect() {
 		if (!this.socket) throw 0;
 		if (!this.userData.uuid) throw 0;
