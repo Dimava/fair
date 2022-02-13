@@ -57,7 +57,7 @@ class AppVue extends VueWithProps({
 						<FairLadderVue v-if="${this.ladder.state.connected}" :ladder="${this.ladder}" />
 					</a-col>
 					<a-col span="10">
-						<FairChatVue v-if="${this.chat.state.connected}" :chat="${this.chat}" />
+						<FairChatVue v-if="${this.chat.state.connected}" :chat="${this.chat}" :ladder="${this.ladder}" />
 
 						<LadderTesterVue v-if="${this.showFakeLadder}" :ladder="${this.ladder}" />
 					</a-col>

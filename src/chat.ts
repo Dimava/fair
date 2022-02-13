@@ -51,7 +51,7 @@ class FairChat {
 		if (!message) return;
 		message.username = unescapeHtml(message.username);
 		message.message = unescapeHtml(message.message);
-		this.state.messages.unshift(message);
+		this.state.messages.unshift(Object.assign(new ChatMessage(), message));
 		this.state.loading = false;
 		// if (chatData.messages.length > 30) chatData.messages.pop();
 	}
@@ -61,7 +61,8 @@ class FairChat {
 				this.state.connectionRequested = false;
 				this.state.connected = true;
 				this.state.currentChatNumber = message.content.currentChatNumber;
-				this.state.messages = message.content.messages;
+				this.state.messages = message.content.messages.map(e => Object.assign(new ChatMessage, e));
+
 				antd.message.success(
 					`Connected to Chad#${message.content.currentChatNumber} !`,
 					10,
@@ -116,6 +117,7 @@ class FairChat {
 @GlobalComponent
 class FairChatVue extends VueWithProps({
 	chat: FairChat,
+	ladder: FairLadder,
 }) {
 	newMessage = '';
 	loading = false;
@@ -126,6 +128,8 @@ class FairChatVue extends VueWithProps({
 	@VueTemplate
 	get _t() {
 		let message = this.chat.state.messages[0];
+		let a = new Ranker(); // this.extractMentions(message)[0];
+		let r = this.ladder.state.rankersById[0];
 		return `
 			<CHAT>
 				<a-list
@@ -141,7 +145,17 @@ class FairChatVue extends VueWithProps({
 							<a-comment>
 								<template #avatar><b>{${this.assholeMark(message.timesAsshole)}}</b></template>
 								<template #author><b>{${message.username}}</b></template>
-								<template #content><p>{${this.htmlToText(message.message)}}</p></template>
+								<template #content>
+									<p>
+										<template v-for="a of ${this.extractMentions(message)}">
+											<template v-if="${typeof a == 'string'}">{${a}}</template>
+											<span v-else
+												class="chat-mention"
+												>@{${a.username}}<sup
+													>#{${a.interpolated.rank + (a.growing ? '' : '^')}}</sup></span>
+										</template>
+									</p>
+								</template>
 								<template #datetime>{${message.timeCreated}}</template>
 							</a-comment>
 						</a-list-item>
@@ -162,7 +176,29 @@ class FairChatVue extends VueWithProps({
 									<span @click="${this.changeUsername()}">🖉</span>
 								</template>
 								<template #content>
-									<a-input-search
+
+									<a-mentions
+										v-model:value="${this.newMessage}"
+										placeholder="Chad mentions is listening..."
+										@search="${this.updatePossibleMentions}"
+										@keyup.enter.prevent="${this.sendMessage()}"
+										>
+										<a-mentions-option
+											v-for="r in ${this.possibleMentions}"
+											:value="${r.username + '#' + r.accountId}"
+											>
+											<div
+												:class="${{ 'mention-not-chatting': !this.chatMessageCounts[r.accountId] }}"
+												>
+												<b>{${this.assholeMark(r.timesAsshole)}}</b>
+												{${r.username}} [{{this.chatMessageCounts[r.accountId]}}]
+												<sup>#{${r.interpolated.rank + (r.growing ? '' : '^')}}</sup>
+											</div>
+										</a-mentions-option>
+									</a-mentions>
+									<a-button type="primary" @click="${this.sendMessage()}"> Send </a-button>
+
+									<a-input-search v-if="0"
 											v-model:value="${this.newMessage}"
 											placeholder="Chad is listening..."
 											@search="${this.sendMessage()}"
@@ -193,6 +229,47 @@ class FairChatVue extends VueWithProps({
 		let a = document.createElement('a');
 		a.innerHTML = s;
 		return a.innerText;
+	}
+	possibleMentions = [new Ranker()];
+	chatMessageCounts = {} as Record<accountId, number>
+	updatePossibleMentions(s: string) {
+		let rankers = Object.values(this.ladder.state.rankersById);
+		let counts = Vue.toRaw(this.chat.state.messages).map(e => e.accountId).reduce((v, e) => (v[e] ??= 0, v[e]++, v), {} as Record<accountId, number>);
+		this.chatMessageCounts = counts;
+		rankers.sort((a, b) => (counts[b.accountId] ?? 0) - (counts[a.accountId] ?? 0));
+		return this.possibleMentions = rankers.filter(e => e.username.startsWith(s)).slice(0, 8);
+	}
+	extractMentions(message: ChatMessage) {
+		let s = this.htmlToText(message.message);
+		let rankers = Object.values(Vue.toRaw(this.ladder.state.rankersById));
+		let rpl = (r: Ranker) => [
+			`@${r.username}#${r.accountId}`, `<@#${r.accountId}>`,
+			`@${r.username}`, `<@#${r.accountId}>`,
+			`@#${r.accountId}`, `<@#${r.accountId}>`,
+			`<<@#${r.accountId}>>`, `<@#${r.accountId}>`,
+		]
+		for (let i = 0; i < 4; i++) {
+			for (let r of rankers) {
+				let [p, l] = rpl(r);
+				if (s.includes(p)) {
+					console.log({s, p, l, r});
+					s = s.replace(p, l);
+				}
+			}
+		}
+
+		Object.assign(globalThis, { _cv: this });
+		return s.match(/<@#\d+>|((?!<@#\d+>)[^])+/g)!.map(e => {
+			let m1 = e.match(/<@#(\d+)>/);
+			if (!m1) return e;
+			return this.ladder.state.rankersById[+m1[1]] ?? new Ranker();;
+		});
+		// let matches = s.match(/@[^@#]{0,32}#\d+|[^@]+/) ?? [];
+		// return matches.flatMap(m => {
+		// 	if (!m.startsWith('@')) return [m];
+		// 	let [_, name, id] = m.split(/@#/);
+		// 	if (!id) return
+		// });
 	}
 	async sendMessage() {
 		this.chat.state.loading = true;
