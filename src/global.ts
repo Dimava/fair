@@ -22,6 +22,8 @@ class UserData {
 	uuid: uuid = '';
 	accountId: accountId = 0;
 	username: string = 'Me';
+	ladderNum = 1;
+	chatNum = 1;
 	constructor() {
 		return Vue.reactive(this);
 	}

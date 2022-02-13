@@ -168,15 +168,30 @@ class FairSocket {
 		window.addEventListener('onbeforeunload', () => this.disconnect());
 	}
 	_resolveOnConnected: (() => void)[] = [];
-	connect(): Promise<void> {
+	async connect(): Promise<void> {
 		this.state.connectionRequested = true;
-		return new Promise(resolve => {
+		await new Promise<void>(resolve => {
 			if (this.stompClient.connected) {
 				resolve();
 			} else {
 				this._resolveOnConnected.push(resolve);
 				this.stompClient.connect({}, this.stompClient.onConnect);
 			}
+		});
+		let _resolve: () => void;
+		this.subscribe('/user/queue/account/login', (data) => {
+			if (data.status != 'OK') {
+				alert('Failed to login!');
+				throw 0;
+			}
+			console.log('login succeed!', data.content);
+			this.userData.chatNum = data.content.highestCurrentLadder;
+			this.userData.ladderNum = data.content.highestCurrentLadder;
+			_resolve();
+		}, { uuid: this.userData.uuid });
+		await new Promise<void>(resolve => {
+			_resolve = resolve;
+			this.send('/app/account/login', { uuid: this.userData.uuid });
 		});
 	}
 	disconnect() {
@@ -188,6 +203,7 @@ class FairSocket {
 		this.state.connectionRequested = false;
 		this.state.connected = true;
 		this._resolveOnConnected.map(e => e());
+		this._resolveOnConnected = [];
 	}
 
 	send<K extends Extract<keyof FairSocketSendRequestMap, `${string}$${string}`>>(destination: K, data: FairSocketSendRequestMap[K], number: number): void;

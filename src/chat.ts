@@ -13,7 +13,6 @@ class ChatMessage {
 
 class FairChat {
 	socket?: FairSocket;
-	ladderNum = 1;
 
 	userData = new UserData();
 	state = Vue.reactive({
@@ -31,16 +30,20 @@ class FairChat {
 	connect() {
 		if (!this.socket) throw 0;
 		if (!this.userData.uuid) throw 0;
-		if (this.state.connected || this.state.connectionRequested) return false;
+		if (this.state.connected || this.state.connectionRequested) throw 0;
 		this.state.connectionRequested = true;
+		let resolveConnected: () => void;
 
 		this.chatSubscription = this.socket.subscribe('/topic/chat/$ladderNum', (data) => {
 			this.handleChatUpdates(data);
-		}, { uuid: this.userData.uuid }, this.ladderNum);
+		}, { uuid: this.userData.uuid }, this.userData.chatNum);
 		this.socket.subscribe('/user/queue/chat/', (data) => {
 			this.handleChatInit(data);
+			resolveConnected();
 		}, { uuid: this.userData.uuid });
-		this.socket.send('/app/chat/init/$ladderNum', { uuid: this.userData.uuid }, this.ladderNum);
+		this.socket.send('/app/chat/init/$ladderNum', { uuid: this.userData.uuid }, this.userData.chatNum);
+
+		return new Promise<void>(resolve => { resolveConnected = resolve; });
 	}
 
 
@@ -57,7 +60,6 @@ class FairChat {
 			if (message.content) {
 				this.state.connectionRequested = false;
 				this.state.connected = true;
-				this.ladderNum = message.content.currentChatNumber;
 				this.state.currentChatNumber = message.content.currentChatNumber;
 				this.state.messages = message.content.messages;
 			}

@@ -124,7 +124,6 @@ class FairLadder {
 		connected: false,
 		connectionRequested: false,
 		rankersById: {} as Record<accountId, Ranker>,
-		ladderNum: 1,
 
 		vinegared: {
 			justVinegared: false,
@@ -171,13 +170,15 @@ class FairLadder {
 		if (!this.userData.uuid) throw 0;
 		if (this.state.connected || this.state.connectionRequested) return false;
 		this.state.connectionRequested = true;
+		let resolveConnected: () => void;
 
 		this.ladderSubscription = this.socket.subscribe('/topic/ladder/$ladderNum', (data) => {
 			this.handleLadderUpdates(data);
-		}, { uuid: this.userData.uuid }, this.state.ladderNum);
+		}, { uuid: this.userData.uuid }, this.userData.ladderNum);
 
 		this.socket.subscribe('/user/queue/ladder/', (data) => {
 			this.handleLadderInit(data);
+			resolveConnected();
 		}, { uuid: this.userData.uuid });
 
 		this.socket.subscribe('/user/queue/ladder/updates', (data) => {
@@ -185,15 +186,16 @@ class FairLadder {
 		}, { uuid: this.userData.uuid });
 
 		this.socket.send('/app/ladder/init/$ladderNum'
-			, { uuid: this.userData.uuid }, this.state.ladderNum);
+			, { uuid: this.userData.uuid }, this.userData.ladderNum);
 
 		this.socket.subscribe('/user/queue/info', (data) => {
 			this.handleInfo(data);
 		}, { uuid: this.userData.uuid });
 
 		this.socket.send('/app/info'
-			, { uuid: this.userData.uuid })
+			, { uuid: this.userData.uuid });
 
+		return new Promise<void>(resolve => { resolveConnected = resolve; });
 	}
 	disconnect() {
 		// todo
