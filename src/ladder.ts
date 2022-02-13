@@ -65,13 +65,13 @@ class Ranker {
 		ranker.timesAsshole = source.timesAsshole;
 		ranker.points = +source.points;
 		ranker.power = +source.power;
-		ranker.interpolated = {
+		Object.assign(ranker.interpolated, {
 			history: [],
 			points: ranker.points,
 			power: ranker.power,
 			rank: ranker.rank,
 			timeOffset: 0,
-		}
+		});
 		if (source.you) {
 			let youSource = source as SocketYouRanker;
 			let youRanker = ranker as YouRanker;
@@ -154,12 +154,15 @@ class FairLadder {
 			currentTime: 0,
 			timeOffset: 0,
 			rankers: [new Ranker()],
+			realtimeStart: 0,
+			realtimeEnd: 0,
 		},
 
 		pointsNeededForManualPromote: 0,
 
 		currentTime: 0,
-		updateRealTime: 0,
+		updateEndRealtime: 0,
+		updateStartRealtime: 0,
 	});
 	ladderSubscription: any;
 	constructor() {
@@ -200,7 +203,6 @@ class FairLadder {
 	disconnect() {
 		// todo
 	}
-
 
 	handleLadderUpdates(message: FairSocketSubscribeResponseMap['/topic/ladder/$ladderNum']) {
 		for (let event of message.events) {
@@ -333,6 +335,8 @@ class FairLadder {
 					currentTime: 0,
 					rankers: this.state.rankers.slice(),
 					timeOffset: 0,
+					realtimeEnd: performance.now(),
+					realtimeStart: performance.now(),
 				};
 
 				this.state.connectionRequested = false;
@@ -340,6 +344,11 @@ class FairLadder {
 
 				this.userData.accountId = this.state.yourRanker.accountId;
 				this.userData.username = this.state.yourRanker.username;
+
+				antd.message.success(
+					`Connected to Ladder#${message.content.currentLadder.number} !`,
+					10,
+				);
 			}
 		}
 	}
@@ -347,6 +356,7 @@ class FairLadder {
 	calculateLadder(secondsPassed: number) {
 		this.state.currentTime += secondsPassed;
 		let currentTime = this.state.currentTime;
+		this.state.updateStartRealtime = performance.now();
 		// FIXME this uses 400ms per 8k rankers
 		this.ensureSortedDescending(this.state.rankers, e => e.points);
 
@@ -423,17 +433,19 @@ class FairLadder {
 			currentTime: this.state.currentTime,
 			rankers: this.state.rankers.slice(),
 			timeOffset: 0,
+			realtimeStart: performance.now(),
+			realtimeEnd: performance.now(),
 		}
 		for (let ranker of this.state.rankers) {
-			ranker.interpolated = {
+			Object.assign(ranker.interpolated, {
 				history: [],
 				power: ranker.power,
 				points: ranker.points,
 				rank: ranker.rank,
 				timeOffset: 0,
-			};
+			});
 		}
-		this.state.updateRealTime = performance.now();
+		this.state.updateEndRealtime = performance.now();
 	}
 
 	ensureSortedDescending<T>(array: T[], fn: (el: T) => number) {
@@ -462,6 +474,7 @@ class FairLadder {
 		let currentTime = this.state.currentTime + secondsOffset;
 		this.state.interpolated.currentTime = currentTime;
 		this.state.interpolated.timeOffset = secondsOffset;
+		this.state.interpolated.realtimeStart = performance.now();
 		let secondsPassed = secondsOffset;
 
 		this.ensureSortedDescending(this.state.interpolated.rankers, e => e.interpolated.points);
@@ -495,7 +508,7 @@ class FairLadder {
 			else
 				ranker.pushHistory('DOWNRANK', { currentTime, oldRank }, true);
 		});
-
+		this.state.interpolated.realtimeEnd = performance.now();
 	}
 
 

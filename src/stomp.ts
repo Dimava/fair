@@ -187,6 +187,12 @@ class FairSocket {
 			console.log('login succeed!', data.content);
 			this.userData.chatNum = data.content.highestCurrentLadder;
 			this.userData.ladderNum = data.content.highestCurrentLadder;
+			antd.message.success(
+				`Highest ladder: #${data.content.highestCurrentLadder}`, 10
+			);
+			antd.message.success(
+				`Connected to server as user#${data.content.accountId}`, 10
+			);
 			_resolve();
 		}, { uuid: this.userData.uuid });
 		await new Promise<void>(resolve => {

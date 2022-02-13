@@ -30,7 +30,7 @@ class AppVue extends VueWithProps({
 		return `
 			<APP>
 				<a-space>
-					<a-button v-if="${!this.socket.state.connected}" 
+					<a-button v-if="${!this.socket.state.connected}"
 						:loading="${this.socket.state.connectionRequested}"
 						@click="${this.connectSocket()}"
 						> Connect Socket </a-button>
@@ -91,24 +91,23 @@ class AppVue extends VueWithProps({
 			this.importModalOpened = true;
 		}
 	}
-	connectSocket() {
-		socket.connect();
+	async connectSocket() {
+		await socket.connect();
 	}
-	connectChat() {
+	async connectChat() {
 		let chat = Vue.toRaw(this.chat);
 		chat.state.connectionRequested = true;
-		setTimeout(() => {
-			chat.state.connectionRequested = false;
-			chat.connect();
-		}, 1000);
+		await new Promise(r => setTimeout(r, 500));
+		chat.state.connectionRequested = false;
+		await chat.connect();
 	}
-	connectLadder() {
+	async connectLadder() {
 		let ladder = Vue.toRaw(this.ladder);
 		ladder.state.connectionRequested = true;
-		setTimeout(() => {
-			ladder.state.connectionRequested = false;
-			ladder.connect();
-		}, 1000);
+		await new Promise(r => setTimeout(r, 500));
+		ladder.state.connectionRequested = false;
+		await ladder.connect();
+		antd.message.info(`Check out the "Center yourself" filter in Username column!`);
 	}
 	loadFakeLadder() {
 		let _l = JSON.parse(localStorage.getItem('_ladder')!);

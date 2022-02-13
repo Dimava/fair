@@ -22,7 +22,7 @@ class LadderTesterVue extends VueWithProps({
 							dots :min="${0}" :max="${1}" :step="${0.1}"
 							style="max-width: 300px;"
 							>
-						<template #mark> tick interval </template>	
+						<template #mark> tick interval </template>
 					</a-slider>
 				</div>
 
@@ -32,7 +32,7 @@ class LadderTesterVue extends VueWithProps({
 							dots :min="${0}" :max="${5}" :step="${0.1}"
 							style="max-width: 300px;"
 							>
-						<template #mark> tick interval </template>	
+						<template #mark> tick interval </template>
 					</a-slider>
 					ever
 				</div>
@@ -47,7 +47,7 @@ class LadderTesterVue extends VueWithProps({
 				<a-switch v-model:checked="${this.ticking}">
 					<template #checkedChildren> ticking </template>
 					<template #unCheckedChildren> paused </template>
-				</a-switch>				
+				</a-switch>
 				<a-switch v-model:checked="${this.updateEveryFrame}">
 					<template #checkedChildren> updating </template>
 					<template #unCheckedChildren> paused </template>
@@ -59,8 +59,8 @@ class LadderTesterVue extends VueWithProps({
 				</a-button>
 				can:{${this.ladder.canRequest('multi')}}
 				({${this.format(this.ladder.state.yourRanker.power)}} / {${this.format(this.ladder.getMultiplierCost())}})
-				<a-progress title="bias" :percent="${+(this.ladder.state.yourRanker.power / this.ladder.getMultiplierCost() * 100).toFixed(0)
-			}" />
+				<a-progress title="bias"
+					:percent="${+(this.ladder.state.yourRanker.power / this.ladder.getMultiplierCost() * 100).toFixed(0)}" />
 
 				<br> <br>
 				<a-button type="primary" @click="${this.ladder.fakeRequest('BIAS')}">
@@ -68,8 +68,8 @@ class LadderTesterVue extends VueWithProps({
 				</a-button>
 				can:{${this.ladder.canRequest('bias')}}
 				({${this.format(this.ladder.state.yourRanker.points)}} / {${this.format(this.ladder.getBiasCost())}})
-				<a-progress title="bias" :percent="${+(this.ladder.state.yourRanker.points / this.ladder.getBiasCost() * 100).toFixed(0)
-			}" color="yellow" />
+				<a-progress title="bias"
+					:percent="${+(this.ladder.state.yourRanker.points / this.ladder.getBiasCost() * 100).toFixed(0)}" color="yellow" />
 
 				
 				<br> <br>
@@ -96,10 +96,10 @@ class LadderTesterVue extends VueWithProps({
 		setInterval(() => this.tick(), 100);
 
 		void (async () => {
-			while(true) {
+			while (true) {
 				await new Promise(requestAnimationFrame);
 				if (this.updateEveryFrame)
-					this.interpolateOffset = (performance.now() - this.ladder.state.updateRealTime) / 1000;
+					this.interpolateOffset = (performance.now() - this.ladder.state.updateEndRealtime) / 1000;
 			}
 		})();
 	}

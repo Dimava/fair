@@ -62,6 +62,10 @@ class FairChat {
 				this.state.connected = true;
 				this.state.currentChatNumber = message.content.currentChatNumber;
 				this.state.messages = message.content.messages;
+				antd.message.success(
+					`Connected to Chad#${message.content.currentChatNumber} !`,
+					10,
+				);
 			}
 		}
 	}
@@ -157,7 +161,7 @@ class FairChatVue extends VueWithProps({
 									{${this.chat.userData.username}}
 									<span @click="${this.changeUsername()}">🖉</span>
 								</template>
-								<template #content>								
+								<template #content>
 									<a-input-search
 											v-model:value="${this.newMessage}"
 											placeholder="Chad is listening..."

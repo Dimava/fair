@@ -66,7 +66,6 @@ class FairLadderVue extends VueWithProps({
 							<a-col flex="9" />
 							<a-col flex="1" style="padding: 0 8px;">
 								<div style="white-space: nowrap;">
-									can:{${this.bias.can}}
 									({${this.bias.sPoints}} / {${this.bias.sCost}})
 									[{${this.bias.sValue}}]
 								</div>
@@ -81,10 +80,14 @@ class FairLadderVue extends VueWithProps({
 							</a-col>
 						</a-row>
 						<a-row type="flex" style="align-items: center;">
-							<a-col flex="9" />
+							<a-col flex="9">
+								<a-switch v-model:checked="${this.interpolate}">
+									<template #checkedChildren> interpolation </template>
+									<template #unCheckedChildren> interpolation </template>
+								</a-switch>
+							</a-col>
 							<a-col flex="1" style="padding: 0 8px;">
 								<div style="white-space: nowrap;">
-									can:{${this.multi.can}}
 									({${this.multi.sPoints}} / {${this.multi.sCost}})
 									[{${this.multi.sValue}}]
 								</div>
@@ -106,6 +109,8 @@ class FairLadderVue extends VueWithProps({
 	}
 	pageSize = 15;
 	currentPage = -1;
+
+	interpolate = false;
 	get pagination(): antd.TableProps<Ranker>['pagination'] {
 		if (this.currentPage == -1) {
 			this.currentPage = Math.ceil(this.ladder.state.yourRanker.rank / this.pageSize);
@@ -237,9 +242,10 @@ class FairLadderVue extends VueWithProps({
 	}
 
 	get bias() {
+		let time = this.ladder.state.currentTime;
 		let value = this.ladder.state.yourRanker.bias;
 		let cost = this.ladder.getBiasCost();
-		let points = this.ladder.state.yourRanker.points;
+		let points = this.ladder.state.yourRanker.interpolated.points;
 
 		return {
 			value, cost, points,
@@ -255,9 +261,10 @@ class FairLadderVue extends VueWithProps({
 		};
 	}
 	get multi() {
+		let time = this.ladder.state.currentTime;
 		let value = this.ladder.state.yourRanker.multiplier;
 		let cost = this.ladder.getMultiplierCost();
-		let points = this.ladder.state.yourRanker.power;
+		let points = this.ladder.state.yourRanker.interpolated.power;
 
 		return {
 			value, cost, points,
@@ -280,6 +287,7 @@ class FairLadderVue extends VueWithProps({
 			let last = performance.now();
 			while (1) {
 				await new Promise(requestAnimationFrame);
+				this.hanleAnimationFrame();
 				let now = performance.now();
 				let delta = now - last;
 				if (delta > 30)
@@ -292,5 +300,15 @@ class FairLadderVue extends VueWithProps({
 					.reduce((v, e, i, a) => v + e / a.length, 0).toFixed(3);
 			}
 		})();
+	}
+	hanleAnimationFrame() {
+		if (!this.interpolate) return;
+		let now = performance.now();
+		let state = this.ladder.state;
+		let estNextUpdate = state.updateStartRealtime + 1000;
+		let estFinishInterpolate = now + (state.interpolated.realtimeEnd - state.interpolated.realtimeStart) + 8;
+		if (estFinishInterpolate > estNextUpdate) return;
+
+		this.ladder.interpolateLadder((now - state.updateEndRealtime) / 1000);
 	}
 }
