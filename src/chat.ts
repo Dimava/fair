@@ -140,10 +140,9 @@ class FairChatVue extends VueWithProps({
 				</a-list>
 				<a-list
 						class="fair-chat-new"
-						:data-source="[1]"
+						:data-source="${[1]}"
 						size="small" bordered
 						item-layout="vertical"
-
 						>
 					<template #renderItem="{ item: message }">
 						<a-list-item>
@@ -151,13 +150,13 @@ class FairChatVue extends VueWithProps({
 								<template #avatar><b>{${this.assholeMark(123)}}</b></template>
 								<template #author>
 									{${this.chat.userData.username}}
-									<span @click="changeUsername">🖉</span>
+									<span @click="${this.changeUsername()}">🖉</span>
 								</template>
 								<template #content>								
 									<a-input-search
-											v-model:value="newMessage"
+											v-model:value="${this.newMessage}"
 											placeholder="Chad is listening..."
-											@search="sendMessage"
+											@search="${this.sendMessage()}"
 											:loading="${this.chat.state.loading}"
 											enter-button="Send"
 											/>
@@ -169,9 +168,9 @@ class FairChatVue extends VueWithProps({
 				<a-modal
 						v-model:visible="${this.newUsernameModalOpen}"
 						title="What shall be your new name?"
-						@ok="confirmNameChange"
+						@ok="${this.confirmNameChange()}"
 						>
-					<a-input ref="elNewUsernameInput" v-model:value="newUsername" @pressEnter="confirmNameChange" :maxlength="32" />
+					<a-input ref="elNewUsernameInput" v-model:value="${this.newUsername}" @pressEnter="${this.confirmNameChange()}" maxlength="32" />
 				</a-modal>
 			</CHAT>
 		`;

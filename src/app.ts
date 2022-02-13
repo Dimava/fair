@@ -32,45 +32,45 @@ class AppVue extends VueWithProps({
 				<a-space>
 					<a-button v-if="${!this.socket.state.connected}" 
 						:loading="${this.socket.state.connectionRequested}"
-						@click="connectSocket"
+						@click="${this.connectSocket()}"
 						> Connect Socket </a-button>
 					<a-button v-if="${!this.ladder.state.connected}"
 						:disabled="${!this.socket.state.connected}"
 						:loading="${this.ladder.state.connectionRequested}"
-						@click="connectLadder"
+						@click="${this.connectLadder()}"
 						> Connect Ladder </a-button>
 					<a-button v-if="${!this.chat.state.connected && !this.showFakeLadder}"
 						:disabled="${!this.socket.state.connected}"
 						:loading="${this.chat.state.connectionRequested}"
-						@click="connectChat"
+						@click="${this.connectChat()}"
 						> Connect Chat </a-button>
 					<a-button v-if="${!this.chat.state.connected && !this.showFakeLadder}"
 						:disabled="${!this.ladder.state.connected}"
-						@click="showFakeLadder=true"
+						@click="${this.showFakeLadder = true}"
 						> Ladder debug tools </a-button>
 					<a-button v-if="${!this.chat.state.connected && !this.ladder.state.connected}"
-						@click="loadFakeLadder"
+						@click="${this.loadFakeLadder()}"
 						> Load fake ladder </a-button>
 				</a-space>
 				<a-row>
-					<a-col :span="14">
-						<FairLadderVue v-if="${this.ladder.state.connected}" :ladder="ladder" />
+					<a-col span="14">
+						<FairLadderVue v-if="${this.ladder.state.connected}" :ladder="${this.ladder}" />
 					</a-col>
-					<a-col :span="10">
-						<FairChatVue v-if="${this.chat.state.connected}" :chat="chat" />
+					<a-col span="10">
+						<FairChatVue v-if="${this.chat.state.connected}" :chat="${this.chat}" />
 
-						<LadderTesterVue v-if="${this.showFakeLadder}" :ladder="ladder" />
+						<LadderTesterVue v-if="${this.showFakeLadder}" :ladder="${this.ladder}" />
 					</a-col>
 				</a-row>
 				<a-modal
 						v-model:visible="${this.importModalOpened}"
 						title="UUID import"
-						@ok="confirmUuidImport"
+						@ok="${this.confirmUuidImport()}"
 						>
 					This client does not support making its own uuids
 					<br>
 					Please paste your UUID
-					<a-input ref="elNewUuidInput" v-model:value="newUuid" @pressEnter="confirmUuidImport" :maxlength="36" />
+					<a-input ref="elNewUuidInput" v-model:value="${this.newUuid}" @pressEnter="${this.confirmUuidImport()}" maxlength="36" />
 				</a-modal>
 
 			</APP>

@@ -525,50 +525,52 @@ class FairLadderVue extends VueWithProps({
 		let record = this.tableData[0];
 		let ranker = this.tableData[0];
 		let h = this.getHistory(ranker)[0];
+		let text!: string;
+		let column!: typeof this.columns[0];
 		return `
 			<LADDER>
 				<a-table
-						:columns="columns"
-						:data-source="tableData"
+						:columns="${this.columns}"
+						:data-source="${this.tableData}"
 						size="small"
-						:rowKey="(record) => record.accountId"
-						:rowClassName="(record, index)=>rowClassName(record)"
-						:pagination="pagination"
+						:rowKey="${(record: Ranker) => record.accountId}"
+						:rowClassName="${(record: Ranker, index: number) => this.rowClassName(record)}"
+						:pagination="${this.pagination}"
 						x-tableLayout="fixed"
 						>
 					<template #headerCell="{ column, text }">
-						<template v-if="column.key == 'username'">
+						<template v-if="${column.key == 'username'}">
 							<b style="width: 1em;display:inline-flex;">
 							</b>Username
 						</template>
 					</template>
 					<template #bodyCell="{ text, record: ranker, index, column }">
-						<template v-if="column.key == 'rank'">
-							<span style="opacity: 0.2;">{{'0000'.slice((text+'').length)}}</span>{{text}}
+						<template v-if="${column.key == 'rank'}">
+							<span style="opacity: 0.2;">{${'0000'.slice((text + '').length)}}</span>{${text}}
 						</template>
-						<template v-if="column.key == 'username'">
+						<template v-if="${column.key == 'username'}">
 							<a-tooltip
 									placement="bottomLeft"
 									>
 								<b style="width: 1em;display:inline-flex;justify-content: center;"
-										:style="{opacity:ranker.timesAsshole?1:0.1}">
+										:style="${{ opacity: ranker.timesAsshole ? 1 : 0.1 }}">
 									{${this.assholeTag(ranker) || '@'}}
-								</b>{{text}}
+								</b>{${text}}
 
 								<template #title>
-									<div v-if="ranker.timesAsshole">
-										Pressed Asshole Button {{ranker.timesAsshole}} times
+									<div v-if="${ranker.timesAsshole}">
+										Pressed Asshole Button {${ranker.timesAsshole}} times
 									</div>
-									<div v-if="!ranker.growing">
+									<div v-if="${!ranker.growing}">
 										Promoted
 									</div>
-									id:{{ranker.accountId}}
+									id:{${ranker.accountId}}
 								</template>
 							</a-tooltip>
-							<div style="float: right;" v-if="1">
+							<div style="float: right;">
 								<b v-for="${h} of ${this.getHistory(ranker)}"
 									style="display: inline-block;text-align:right;"
-									:style="h.style"
+									:style="${h.style}"
 								>{${h.text}}</b>
 							</div>
 							
