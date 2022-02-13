@@ -1,6 +1,13 @@
 
 
-@GlobalComponent
+@GlobalComponent({
+	watch: {
+		interpolateOffset(offset: number) {
+			let ladder: FairLadder = this.ladder;
+			ladder.interpolateLadder(offset);
+		}
+	}
+})
 class LadderTesterVue extends VueWithProps({
 	ladder: FairLadder,
 }) {
@@ -19,6 +26,17 @@ class LadderTesterVue extends VueWithProps({
 					</a-slider>
 				</div>
 
+				<div style="max-width: 300px;">
+					Interpolated by {${this.interpolateOffset.toFixed(1)}}s
+					<a-slider v-model:value="${this.interpolateOffset}"
+							dots :min="${0}" :max="${5}" :step="${0.1}"
+							style="max-width: 300px;"
+							>
+						<template #mark> tick interval </template>	
+					</a-slider>
+					ever
+				</div>
+
 				<a-input-number min="0" max="10" step="0.1" v-model:value="${this.tickSpeed}">
 					<template #addonBefore>
 						Tick amount
@@ -28,6 +46,10 @@ class LadderTesterVue extends VueWithProps({
 
 				<a-switch v-model:checked="${this.ticking}">
 					<template #checkedChildren> ticking </template>
+					<template #unCheckedChildren> paused </template>
+				</a-switch>				
+				<a-switch v-model:checked="${this.updateEveryFrame}">
+					<template #checkedChildren> updating </template>
 					<template #unCheckedChildren> paused </template>
 				</a-switch>
 				<br> <br>
@@ -66,10 +88,20 @@ class LadderTesterVue extends VueWithProps({
 	tickSpeed = 1;
 	ticking = false;
 
+	interpolateOffset = 0;
+	updateEveryFrame = false;
 
 	passedTime = 0;
 	mounted() {
 		setInterval(() => this.tick(), 100);
+
+		void (async () => {
+			while(true) {
+				await new Promise(requestAnimationFrame);
+				if (this.updateEveryFrame)
+					this.interpolateOffset = (performance.now() - this.ladder.state.updateRealTime) / 1000;
+			}
+		})();
 	}
 	format(n: number) {
 		return numberFormatter.format(n);
